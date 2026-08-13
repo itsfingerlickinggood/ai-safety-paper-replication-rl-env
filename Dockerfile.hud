@@ -1,0 +1,21 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# bubblewrap is used both by HUD workspace isolation and by the hidden submission runner.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends bubblewrap ca-certificates bash \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY pyproject.toml uv.lock /app/
+RUN pip install --no-cache-dir uv \
+    && uv sync --frozen --no-dev
+
+COPY env.py tasks.py /app/
+COPY workspace_seed /app/workspace_seed
+COPY verifier /app/verifier
+
+EXPOSE 8765
+CMD ["uv", "run", "hud", "serve", "env:env", "--host", "0.0.0.0", "--port", "8765"]
